@@ -13,7 +13,7 @@ def format_incident_details(incident_data):
         return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     lines = [f"📄 Detail Ticket: <code>{esc(incident_data.get('incident', 'N/A'))}</code>"]
     field_map = {
-        '• Contact Name': 'contact name', '• No. HP': 'no. hp', '• User': 'user',
+        '• Contact Name': 'contact name', '• No HP': 'no hp', '• User': 'user',
         '• Customer Type': 'customer type', '• DATEK': 'datek', '• STO': 'sto',
         '• Status Sugar': 'status sugar', '• Proses TTR 4 Jam': 'proses ttr 4 jam', '• SN': 'sn'
     }
