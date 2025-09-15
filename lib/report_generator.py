@@ -85,18 +85,26 @@ def generate_report_text():
         # --- Formatting the Message ---
         tz = pytz.timezone(TIMEZONE)
         dt_str = datetime.now(tz).strftime('%d/%m/%Y %H:%M')
-        header = f"⏰ Laporan Tiket — {dt_str}\n"
+        header = f"⏰ Laporan Tiket SQM — {dt_str}\n"
 
+        # ... inside generate_report_text ...
         if df_sorted.empty:
             body = "Tidak ada tiket yang memenuhi kriteria."
         else:
             rows = []
             for _, row in df_sorted.iterrows():
+                # Get all the values from the row first
                 incident = row.get('incident', '')
                 umur = row.get('umur tiket', '')
                 cust_type = row.get('customer type', '')
                 sto = row.get('sto', '')
-                rows.append(f"<code>{incident}</code> | {umur} Jam | {cust_type} | {sto}")
+                status_sugar = row.get('status sugar', '')
+                hasil_ukur = row.get('hasil ukur', '')
+
+                # --- MODIFIED: Add the new values to the formatted string ---
+                rows.append(
+                    f"<code>{incident}</code> | {umur} Jam | {cust_type} | {sto} | {status_sugar} | {hasil_ukur}"
+                )
             body = "\n".join(rows)
         
         return (True, header + "\n" + body)
