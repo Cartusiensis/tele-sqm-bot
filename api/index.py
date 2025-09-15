@@ -78,7 +78,7 @@ class handler(BaseHTTPRequestHandler):
                 incident_ids = re.findall(r'\binc\d+\b', text, re.IGNORECASE)
                 if incident_ids:
                     unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
-                    SPREADSHEET_ID = os.environ.get("SPREADSHE-ET_ID")
+                    SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
                     df = get_sheet_as_dataframe(SPREADSHEET_ID, "SQM")
                     df['incident'] = df['incident'].str.upper()
                     
