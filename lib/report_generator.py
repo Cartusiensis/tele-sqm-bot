@@ -112,3 +112,40 @@ def generate_report_text():
     except Exception as e:
         print(f"Error during report generation: {e}")
         return (False, f"Bot Error: An exception occurred during report generation: {e}")
+
+
+def find_summary_in_insera(incident_id):
+    """
+    Performs a targeted search in the INSERA sheet to find the summary for a specific incident.
+    Returns the summary text or None if not found.
+    """
+    try:
+        SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
+        gc = get_gspread_client()
+        if not gc:
+            return "Error: Could not connect to Google."
+
+        spreadsheet = gc.open_by_key(SPREADSHEET_ID)
+        insera_sheet = spreadsheet.worksheet("INSERA")
+        
+        # gspread's find() is perfect for a quick, targeted search.
+        # It's slower than getting all records, but safer if headers are bad.
+        cell = insera_sheet.find(incident_id, in_column=2)
+        
+        if cell:
+            # Now we need to find the "SUMMARY" column.
+            # Let's get the header row to find its index.
+            headers = insera_sheet.row_values(1)
+            try:
+                # Find the column index for "SUMMARY" (case-insensitive)
+                summary_col_index = [h.upper() for h in headers].index("SUMMARY") + 1
+                # Get the summary value from the same row, but in the summary column
+                summary_value = insera_sheet.cell(cell.row, summary_col_index).value
+                return summary_value
+            except ValueError:
+                return "Summary column not found." # The column 'SUMMARY' doesn't exist
+        else:
+            return None # Incident not found in INSERA sheet
+    except Exception as e:
+        print(f"Error finding summary in INSERA: {e}")
+        return f"Error during INSERA lookup."

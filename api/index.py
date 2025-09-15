@@ -86,22 +86,39 @@ class handler(BaseHTTPRequestHandler):
             else:
                 incident_ids = re.findall(r'\binc\d+\b', text, re.IGNORECASE)
                 if incident_ids:
+                    # First, we need to import our new helper function
+                    from lib.report_generator import find_summary_in_insera
+
                     unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
                     SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
-                    df = get_sheet_as_dataframe(SPREADSHEET_ID, "INSERA")
-                    df['incident'] = df['incident'].str.upper()
+                    
+                    # Step 1: Get the main data from the clean 'SQM' sheet
+                    df_sqm = get_sheet_as_dataframe(SPREADSHEET_ID, "SQM")
+                    df_sqm['incident'] = df_sqm['incident'].str.upper()
                     
                     replies = []
                     for incident_id in unique_ids:
-                        result = df[df['incident'] == incident_id]
+                        # Search for the incident in the SQM data first
+                        result = df_sqm[df_sqm['incident'] == incident_id]
+                        
                         if not result.empty:
+                            # We found it in SQM, get the primary details
                             incident_data = result.iloc[0].to_dict()
+                            
+                            # Step 2: Now, perform the secondary lookup for the summary in INSERA
+                            summary_text = find_summary_in_insera(incident_id)
+                            
+                            # Step 3: Add the summary to our data dictionary
+                            if summary_text:
+                                incident_data['summary'] = summary_text
+                            
+                            # Format and add the combined reply
                             replies.append(format_incident_details(incident_data))
                         else:
-                            replies.append(f"❌ Tidak ditemukan: <code>{incident_id}</code>")
+                            # The incident was not even found in the main SQM sheet
+                            replies.append(f"❌ Tidak ditemukan di sheet SQM: <code>{incident_id}</code>")
                     
                     final_reply = "\n\n".join(replies)
-                    # --- MODIFIED: Pass the message_id to create a reply ---
                     send_telegram_message(chat_id, final_reply, reply_to_message_id=message_id)
 
         except Exception as e:
