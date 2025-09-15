@@ -36,8 +36,11 @@ class handler(BaseHTTPRequestHandler):
             chat_id = message.get("chat", {}).get("id")
             user_id = message.get("from", {}).get("id")
             text = message.get("text", "").strip()
+            
+            # --- NEW: Get the ID of the message to reply to ---
+            message_id = message.get("message_id")
 
-            if not all([chat_id, user_id, text]):
+            if not all([chat_id, user_id, text, message_id]):
                 self.send_response(200); self.end_headers(); return
 
             # --- LOAD AUTHORIZATION LISTS ---
@@ -47,30 +50,30 @@ class handler(BaseHTTPRequestHandler):
             authorized_user_ids = [uid for uid in all_authorized_ids if uid > 0]
             authorized_group_ids = [gid for gid in all_authorized_ids if gid < 0]
 
-            # --- NEW AUTHORIZATION LOGIC ---
+            # --- AUTHORIZATION LOGIC ---
             is_authorized_user = user_id in authorized_user_ids
             is_in_authorized_group = chat_id in authorized_group_ids
             is_private_chat = chat_id > 0
 
             has_permission = False
-            # Rule 1: Anyone inside an authorized group has permission.
             if is_in_authorized_group:
                 has_permission = True
-            # Rule 2: An authorized user has permission in a private chat.
             elif is_private_chat and is_authorized_user:
                 has_permission = True
 
             if not has_permission:
                 print(f"Unauthorized access by user {user_id} in chat {chat_id}.")
-                send_telegram_message(chat_id, "⛔️ You are not authorized to use this bot in this chat.")
+                # Reply to the unauthorized message
+                send_telegram_message(chat_id, "⛔️ You are not authorized to use this bot in this chat.", reply_to_message_id=message_id)
                 self.send_response(200); self.end_headers(); self.wfile.write(b'{"status":"ok"}'); return
             
             # --- PERMISSION GRANTED - PROCESS THE COMMAND ---
             
             # Handle the /laporantiket command
             if text.startswith("/laporantiket"):
-                send_telegram_message(chat_id, "Generating report, please wait...")
+                send_telegram_message(chat_id, "Generating report, please wait...", reply_to_message_id=message_id)
                 success, report_text = generate_report_text()
+                # The final report is a new message, not a reply, which is cleaner.
                 send_telegram_message(chat_id, report_text)
             
             # Handle incident lookups
@@ -92,7 +95,8 @@ class handler(BaseHTTPRequestHandler):
                             replies.append(f"❌ Tidak ditemukan: <code>{incident_id}</code>")
                     
                     final_reply = "\n\n".join(replies)
-                    send_telegram_message(chat_id, final_reply)
+                    # --- MODIFIED: Pass the message_id to create a reply ---
+                    send_telegram_message(chat_id, final_reply, reply_to_message_id=message_id)
 
         except Exception as e:
             # General error handling

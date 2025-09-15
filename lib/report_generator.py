@@ -20,10 +20,25 @@ def get_gspread_client():
         return None
 
 # --- Reusable function to send a message ---
-def send_telegram_message(chat_id, text):
+def send_telegram_message(chat_id, text, reply_to_message_id=None):
+    """
+    Sends a message to Telegram.
+    Optionally replies to a specific message if reply_to_message_id is provided.
+    """
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
     TELEGRAM_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    
+    # Start with the basic payload
+    payload = {
+        "chat_id": str(chat_id),
+        "text": text,
+        "parse_mode": "HTML"
+    }
+    
+    # If a message ID was provided, add it to the payload
+    if reply_to_message_id:
+        payload['reply_to_message_id'] = reply_to_message_id
+        
     requests.post(f"{TELEGRAM_URL}/sendMessage", json=payload)
 
 # --- Function for reading data ---
