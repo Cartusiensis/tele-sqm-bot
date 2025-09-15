@@ -2,14 +2,13 @@ import os
 import json
 import re
 from http.server import BaseHTTPRequestHandler
-import requests
 import pandas as pd
-from lib.report_generator import generate_report_text, get_gspread_client
-from lib.report_generator import send_telegram_message as send_chunked_message
-from lib.report_generator import generate_report_text, get_sheet_as_dataframe
 
+# Import reusable functions
+from lib.report_generator import generate_report_text, get_sheet_as_dataframe, send_telegram_message
 
 def format_incident_details(incident_data):
+    # ... (this function does not need to change)
     def esc(s):
         return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     lines = [f"📄 Detail Ticket: <code>{esc(incident_data.get('incident', 'N/A'))}</code>"]
@@ -23,66 +22,86 @@ def format_incident_details(incident_data):
             lines.append(f"{label}: {esc(incident_data[col_name])}")
     return "\n".join(lines)
 
+
 # --- VERCEL'S MAIN HANDLER ---
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
+            # --- SETUP & PARSING ---
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             update = json.loads(post_data)
 
             message = update.get("message", {})
             chat_id = message.get("chat", {}).get("id")
+            user_id = message.get("from", {}).get("id")
             text = message.get("text", "").strip()
 
-            if not chat_id or not text:
-                self.send_response(200)
-                self.end_headers()
-                return
+            if not all([chat_id, user_id, text]):
+                self.send_response(200); self.end_headers(); return
 
-            # --- Check for the /laporantiket command ---
-            if text.startswith("/laporantiket"):
-                send_chunked_message(chat_id, "Generating report, please wait...")
-                success, report_text = generate_report_text()
-                send_chunked_message(chat_id, report_text)
-                # We are done, so we exit early
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(b'{"status":"ok"}')
-                return
-
-            # --- Original logic for searching incidents ---
-            incident_ids = re.findall(r'\binc\d+\b', text, re.IGNORECASE)
-            if not incident_ids:
-                # If it's not the report command and not an incident, we can ignore it
-                self.send_response(200)
-                self.end_headers()
-                return
-
-            unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
-            SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
-            df = get_sheet_as_dataframe(SPREADSHEET_ID, "SQM")
-            df['incident'] = df['incident'].str.upper()
-
-            replies = []
-            for incident_id in unique_ids:
-                result = df[df['incident'] == incident_id]
-                if not result.empty:
-                    incident_data = result.iloc[0].to_dict()
-                    replies.append(format_incident_details(incident_data))
-                else:
-                    replies.append(f"❌ Tidak ditemukan: <code>{incident_id}</code>")
+            # --- LOAD AUTHORIZATION LISTS ---
+            all_authorized_ids_str = os.environ.get("MY_CHAT_ID", "")
+            all_authorized_ids = [int(i) for i in all_authorized_ids_str.split(',') if i]
             
-            final_reply = "\n\n".join(replies)
-            send_chunked_message(chat_id, final_reply)
+            authorized_user_ids = [uid for uid in all_authorized_ids if uid > 0]
+            authorized_group_ids = [gid for gid in all_authorized_ids if gid < 0]
+
+            # --- NEW AUTHORIZATION LOGIC ---
+            is_authorized_user = user_id in authorized_user_ids
+            is_in_authorized_group = chat_id in authorized_group_ids
+            is_private_chat = chat_id > 0
+
+            has_permission = False
+            # Rule 1: Anyone inside an authorized group has permission.
+            if is_in_authorized_group:
+                has_permission = True
+            # Rule 2: An authorized user has permission in a private chat.
+            elif is_private_chat and is_authorized_user:
+                has_permission = True
+
+            if not has_permission:
+                print(f"Unauthorized access by user {user_id} in chat {chat_id}.")
+                send_telegram_message(chat_id, "⛔️ You are not authorized to use this bot in this chat.")
+                self.send_response(200); self.end_headers(); self.wfile.write(b'{"status":"ok"}'); return
+            
+            # --- PERMISSION GRANTED - PROCESS THE COMMAND ---
+            
+            # Handle the /laporantiket command
+            if text.startswith("/laporantiket"):
+                send_telegram_message(chat_id, "Generating report, please wait...")
+                success, report_text = generate_report_text()
+                send_telegram_message(chat_id, report_text)
+            
+            # Handle incident lookups
+            else:
+                incident_ids = re.findall(r'\binc\d+\b', text, re.IGNORECASE)
+                if incident_ids:
+                    unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
+                    SPREADSHEET_ID = os.environ.get("SPREADSHE-ET_ID")
+                    df = get_sheet_as_dataframe(SPREADSHEET_ID, "SQM")
+                    df['incident'] = df['incident'].str.upper()
+                    
+                    replies = []
+                    for incident_id in unique_ids:
+                        result = df[df['incident'] == incident_id]
+                        if not result.empty:
+                            incident_data = result.iloc[0].to_dict()
+                            replies.append(format_incident_details(incident_data))
+                        else:
+                            replies.append(f"❌ Tidak ditemukan: <code>{incident_id}</code>")
+                    
+                    final_reply = "\n\n".join(replies)
+                    send_telegram_message(chat_id, final_reply)
 
         except Exception as e:
-            print(f"Error: {e}")
-            admin_chat_id = os.environ.get("MY_CHAT_ID")
+            # General error handling
+            print(f"Error in handler: {e}")
+            admin_chat_id = os.environ.get("MY_CHAT_ID", "").split(',')[0]
             if admin_chat_id:
-                send_chunked_message(admin_chat_id, f"Bot Error in main handler: {e}")
-
-        # ALWAYS reply to Telegram with a 200 OK
+                send_telegram_message(admin_chat_id, f"Bot Error in main handler: {e}")
+        
+        # Always acknowledge the request to Telegram
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b'{"status":"ok"}')
