@@ -13,9 +13,15 @@ def format_incident_details(incident_data):
         return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     lines = [f"📄 Detail Ticket: <code>{esc(incident_data.get('incident', 'N/A'))}</code>"]
     field_map = {
-        '• Contact Name': 'contact name', '• No HP': 'no hp', '• User': 'user',
-        '• Customer Type': 'customer type', '• DATEK': 'datek', '• STO': 'sto',
-        '• Status Sugar': 'status sugar', '• Proses TTR 4 Jam': 'proses ttr 4 jam', '• SN': 'sn'
+        '• Contact Name': 'contact name', 
+        '• No HP': 'no hp', 
+        '• User': 'user',
+        '• Customer Type': 'customer type', 
+        '• DATEK': 'datek', '• STO': 'sto',
+        '• Status Sugar': 'status sugar', 
+        '• Proses TTR 4 Jam': 'proses ttr 4 jam', 
+        '• SN': 'sn',
+        '• Summary': 'summary'
     }
     for label, col_name in field_map.items():
         if col_name in incident_data and pd.notna(incident_data[col_name]) and incident_data[col_name] != '':
@@ -82,7 +88,7 @@ class handler(BaseHTTPRequestHandler):
                 if incident_ids:
                     unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
                     SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
-                    df = get_sheet_as_dataframe(SPREADSHEET_ID, "SQM")
+                    df = get_sheet_as_dataframe(SPREADSHEET_ID, "INSERA")
                     df['incident'] = df['incident'].str.upper()
                     
                     replies = []
