@@ -40,8 +40,8 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # --- NEW: Check for the /report command ---
-            if text == "/laporantiket":
+            # --- Check for the /laporantiket command ---
+            if text.startswith("/laporantiket"):
                 send_chunked_message(chat_id, "Generating report, please wait...")
                 success, report_text = generate_report_text()
                 send_chunked_message(chat_id, report_text)
