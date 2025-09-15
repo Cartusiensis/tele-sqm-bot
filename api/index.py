@@ -64,7 +64,7 @@ class handler(BaseHTTPRequestHandler):
             if not has_permission:
                 print(f"Unauthorized access by user {user_id} in chat {chat_id}.")
                 # Reply to the unauthorized message
-                send_telegram_message(chat_id, "⛔️ You are not authorized to use this bot in this chat.", reply_to_message_id=message_id)
+                send_telegram_message(chat_id, "⛔️ Bot hanya dapat digunakan dari grup, hubungi pemilik untuk mendapatkan akses japri.", reply_to_message_id=message_id)
                 self.send_response(200); self.end_headers(); self.wfile.write(b'{"status":"ok"}'); return
             
             # --- PERMISSION GRANTED - PROCESS THE COMMAND ---
