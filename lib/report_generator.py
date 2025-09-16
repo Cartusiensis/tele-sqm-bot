@@ -120,7 +120,7 @@ def generate_report_text():
         # --- Formatting the Message ---
         tz = pytz.timezone(TIMEZONE)
         dt_str = datetime.now(tz).strftime('%d/%m/%Y %H:%M')
-        title = f"⏰ Laporan Tiket — {dt_str}\n"
+        title = f"⏰ Laporan Tiket SQM — {dt_str}\n"
 
         body = ""
 
