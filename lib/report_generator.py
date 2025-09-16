@@ -141,31 +141,31 @@ def generate_report_text():
                 cust_type = cust_type_map.get(original_cust_type.upper(), original_cust_type)
                 status_sugar = 'NON SGR' if original_status_sugar.strip().upper() == 'NON SUGAR' else original_status_sugar
 
-                # 2. Build the main string in the correct order
+                # 2. Prepare the status text (bold if 'Sugar')
+                status_sugar_formatted = f"<b>{status_sugar}</b>" if status_sugar.strip().upper() == 'SUGAR' else status_sugar
+
+                # 3. Build the main data string with the " | " separator
                 # Order: INC | Umur | Cust Type | STO | Status Sugar | Hasil Ukur
-                line_parts = [
+                data_string = " | ".join([
                     f"<code>{incident}</code>",
-                    f"{umur} jam",
+                    f"{umur}j",
                     cust_type,
                     sto,
-                    status_sugar,
+                    status_sugar_formatted, # Use the potentially bolded version
                     hasil_ukur
-                ]
+                ])
 
-                # 3. Apply conditional formatting for 'Sugar' status
+                # 4. Conditionally prepend the emoji to the final line
                 if status_sugar.strip().upper() == 'SUGAR':
-                    # Add the emoji to the front of the list
-                    line_parts.insert(0, '🔴')
-                    # Find 'status_sugar' in the list and make it bold
-                    try:
-                        sugar_index = line_parts.index(status_sugar)
-                        line_parts[sugar_index] = f"<b>{status_sugar}</b>"
-                    except ValueError:
-                        pass # Should not happen, but safe to have
-
-                # 4. Join all parts with the separator
-                rows.append(" | ".join(line_parts))
+                    # Emoji comes first, then the data string, with no separator
+                    final_line = f"🔴 {data_string}"
+                else:
+                    # For normal tickets, the line is just the data string
+                    final_line = data_string
+                
+                rows.append(final_line)
             
+            # The body is now the joined rows
             body = "\n".join(rows)
 
         final_message = title + "\n" + body
