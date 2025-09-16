@@ -120,45 +120,46 @@ def generate_report_text():
         # --- Formatting the Message ---
         tz = pytz.timezone(TIMEZONE)
         dt_str = datetime.now(tz).strftime('%d/%m/%Y %H:%M')
-        header = f"⏰ Laporan Tiket SQM — {dt_str}\n"
+        title = f"⏰ Laporan Tiket — {dt_str}\n"
 
-        # ... inside generate_report_text ...
+        body = ""
+
         if df_sorted.empty:
             body = "Tidak ada tiket yang memenuhi kriteria."
         else:
+            report_header = "<b>INC | Umur | Status | Hasil | Cust | STO</b>"
+            
             rows = []
             for _, row in df_sorted.iterrows():
+                # Get original values
                 incident = row.get('incident', '')
                 umur = row.get('umur tiket', '')
-                original_status_sugar = row.get('status sugar', '')
-                hasil_ukur = row.get('hasil ukur', '')
+                original_status_sugar = row.get('status sugar', 'N/A')
+                hasil_ukur = row.get('hasil ukur', 'N/A')
                 original_cust_type = row.get('customer type', '')
                 sto = row.get('sto', '')
 
-                # 1. Shorten Customer Type
-                cust_type_map = {
-                    'PLATINUM': 'PLAT',
-                    'DIAMOND': 'DMND',
-                    'REGULER': 'REG'
-                }
-                # .get() with a default value makes this safe. If it's GOLD, it defaults back to GOLD.
+                # Transformation logic for customer type
+                cust_type_map = {'PLATINUM': 'PLAT', 'DIAMOND': 'DMND', 'REGULER': 'REG'}
                 cust_type = cust_type_map.get(original_cust_type.upper(), original_cust_type)
 
-                # 2. Shorten Status Sugar
-                if original_status_sugar.strip().upper() == 'NON SUGAR':
-                    status_sugar = 'NON SGR'
-                else:
-                    status_sugar = original_status_sugar
-
-                # --- Conditional Formatting Logic ---
+                # Transformation logic for status sugar
+                status_sugar = 'NON SGR' if original_status_sugar.strip().upper() == 'NON SUGAR' else original_status_sugar
+                
+                # Conditional formatting for the line
                 if status_sugar.strip().upper() == 'SUGAR':
                     line = f"🔴 <code>{incident}</code> | {umur}j | <b>{status_sugar}</b> | {hasil_ukur} | {cust_type} | {sto}"
                 else:
                     line = f"<code>{incident}</code> | {umur}j | {status_sugar} | {hasil_ukur} | {cust_type} | {sto}"
-
+                
                 rows.append(line)
-        
-        return (True, header + "\n" + body)
+            
+            # Join the rows and add the header
+            body = f"{report_header}\n\n" + "\n".join(rows)
+
+        final_message = title + "\n" + body
+
+        return (True, final_message)
 
     except Exception as e:
         print(f"Error during report generation: {e}")
