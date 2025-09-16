@@ -6,6 +6,7 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
+import re
 
 # --- Reusable function to get an authorized gspread client ---
 def get_gspread_client():
@@ -43,15 +44,49 @@ def send_telegram_message(chat_id, text, reply_to_message_id=None):
 
 # --- Function for reading data ---
 def get_sheet_as_dataframe(spreadsheet_id, sheet_name):
+    """
+    Reads the entire sheet into a powerful pandas DataFrame and
+    cleans the column headers to handle newlines and extra spaces.
+    """
     gc = get_gspread_client()
     if not gc:
         raise ConnectionError("Google Sheets client is not authorized.")
     spreadsheet = gc.open_by_key(spreadsheet_id)
     sheet = spreadsheet.worksheet(sheet_name)
-    data = sheet.get_all_records()
-    df = pd.DataFrame(data)
-    df.columns = [col.strip().lower() for col in df.columns]
+    
+    # Get all data including the header row
+    all_values = sheet.get_all_values()
+    
+    if not all_values:
+        # Return an empty DataFrame if the sheet is empty
+        return pd.DataFrame()
+
+    # The first row is the header
+    header_row = all_values[0]
+    # The rest of the rows are the data
+    data_rows = all_values[1:]
+    
+    cleaned_headers = [clean_header(h) for h in header_row]
+    
+    # Create the DataFrame with the cleaned headers
+    df = pd.DataFrame(data_rows, columns=cleaned_headers)
+    
     return df
+
+def clean_header(header_text):
+    """
+    Cleans up a spreadsheet column header by making it lowercase
+    and replacing newlines/multiple spaces with a single space.
+    e.g., "Contact\nName" becomes "contact name".
+    """
+    if not isinstance(header_text, str):
+        return ""
+    # Replace any newline characters with a space
+    cleaned_text = header_text.replace('\n', ' ')
+    # Replace multiple whitespace characters with a single space
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text)
+    # Convert to lowercase and remove leading/trailing spaces
+    return cleaned_text.strip().lower()
 
 # --- The Core Report Generation Logic ---
 def generate_report_text():
