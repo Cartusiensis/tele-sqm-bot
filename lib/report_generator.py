@@ -128,19 +128,34 @@ def generate_report_text():
         else:
             rows = []
             for _, row in df_sorted.iterrows():
-                # Get all the values from the row
                 incident = row.get('incident', '')
                 umur = row.get('umur tiket', '')
-                status_sugar = row.get('status sugar', 'N/A')
-                hasil_ukur = row.get('hasil ukur', 'N/A')
-                cust_type = row.get('customer type', '')
+                original_status_sugar = row.get('status sugar', '')
+                hasil_ukur = row.get('hasil ukur', '')
+                original_cust_type = row.get('customer type', '')
                 sto = row.get('sto', '')
 
+                # 1. Shorten Customer Type
+                cust_type_map = {
+                    'PLATINUM': 'PLAT',
+                    'DIAMOND': 'DMND',
+                    'REGULER': 'REG'
+                }
+                # .get() with a default value makes this safe. If it's GOLD, it defaults back to GOLD.
+                cust_type = cust_type_map.get(original_cust_type.upper(), original_cust_type)
+
+                # 2. Shorten Status Sugar
+                if original_status_sugar.strip().upper() == 'NON SUGAR':
+                    status_sugar = 'NON SGR'
+                else:
+                    status_sugar = original_status_sugar
+
+                # --- Conditional Formatting Logic ---
                 if status_sugar.strip().upper() == 'SUGAR':
                     line = f"🔴 <code>{incident}</code> | {umur}j | <b>{status_sugar}</b> | {hasil_ukur} | {cust_type} | {sto}"
                 else:
                     line = f"<code>{incident}</code> | {umur}j | {status_sugar} | {hasil_ukur} | {cust_type} | {sto}"
-                
+
                 rows.append(line)
         
         return (True, header + "\n" + body)
