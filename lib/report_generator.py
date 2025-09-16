@@ -127,11 +127,9 @@ def generate_report_text():
         if df_sorted.empty:
             body = "Tidak ada tiket yang memenuhi kriteria."
         else:
-            report_header = "<b>INC | Umur | Status | Hasil | Cust | STO</b>"
-            
             rows = []
             for _, row in df_sorted.iterrows():
-                # Get original values
+                # 1. Get and transform data (no changes here)
                 incident = row.get('incident', '')
                 umur = row.get('umur tiket', '')
                 original_status_sugar = row.get('status sugar', 'N/A')
@@ -139,23 +137,36 @@ def generate_report_text():
                 original_cust_type = row.get('customer type', '')
                 sto = row.get('sto', '')
 
-                # Transformation logic for customer type
                 cust_type_map = {'PLATINUM': 'PLAT', 'DIAMOND': 'DMND', 'REGULER': 'REG'}
                 cust_type = cust_type_map.get(original_cust_type.upper(), original_cust_type)
-
-                # Transformation logic for status sugar
                 status_sugar = 'NON SGR' if original_status_sugar.strip().upper() == 'NON SUGAR' else original_status_sugar
-                
-                # Conditional formatting for the line
+
+                # 2. Build the main string in the correct order
+                # Order: INC | Umur | Cust Type | STO | Status Sugar | Hasil Ukur
+                line_parts = [
+                    f"<code>{incident}</code>",
+                    f"{umur} jam",
+                    cust_type,
+                    sto,
+                    status_sugar,
+                    hasil_ukur
+                ]
+
+                # 3. Apply conditional formatting for 'Sugar' status
                 if status_sugar.strip().upper() == 'SUGAR':
-                    line = f"🔴 <code>{incident}</code> | {umur}j | <b>{status_sugar}</b> | {hasil_ukur} | {cust_type} | {sto}"
-                else:
-                    line = f"<code>{incident}</code> | {umur}j | {status_sugar} | {hasil_ukur} | {cust_type} | {sto}"
-                
-                rows.append(line)
+                    # Add the emoji to the front of the list
+                    line_parts.insert(0, '🔴')
+                    # Find 'status_sugar' in the list and make it bold
+                    try:
+                        sugar_index = line_parts.index(status_sugar)
+                        line_parts[sugar_index] = f"<b>{status_sugar}</b>"
+                    except ValueError:
+                        pass # Should not happen, but safe to have
+
+                # 4. Join all parts with the separator
+                rows.append(" | ".join(line_parts))
             
-            # Join the rows and add the header
-            body = f"{report_header}\n\n" + "\n".join(rows)
+            body = "\n".join(rows)
 
         final_message = title + "\n" + body
 
