@@ -18,7 +18,8 @@ def format_incident_details(incident_data):
         '• User': 'user',
         '• Customer Type': 'customer type', 
         '• DATEK': 'datek', '• STO': 'sto',
-        '• Status Sugar': 'status sugar', 
+        '• Status Sugar': 'status sugar',
+        '• Hasil Ukur': 'hasil ukur',
         '• Proses TTR 4 Jam': 'proses ttr 4 jam', 
         '• SN': 'sn',
         '• Summary': 'summary'
