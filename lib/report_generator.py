@@ -23,24 +23,41 @@ def get_gspread_client():
 # --- Reusable function to send a message ---
 def send_telegram_message(chat_id, text, reply_to_message_id=None):
     """
-    Sends a message to Telegram.
-    Optionally replies to a specific message if reply_to_message_id is provided.
+    Sends a message to Telegram and logs the response for debugging.
     """
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
-    TELEGRAM_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+    if not BOT_TOKEN:
+        print("ERROR: BOT_TOKEN is not set!")
+        return
+
+    TELEGRAM_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     
-    # Start with the basic payload
     payload = {
         "chat_id": str(chat_id),
         "text": text,
         "parse_mode": "HTML"
     }
     
-    # If a message ID was provided, add it to the payload
     if reply_to_message_id:
         payload['reply_to_message_id'] = reply_to_message_id
+    
+    try:
+        # Send the request and store the response
+        response = requests.post(TELEGRAM_URL, json=payload, timeout=10) # Added a timeout
         
-    requests.post(f"{TELEGRAM_URL}/sendMessage", json=payload)
+        # Convert the response to JSON to inspect it
+        response_json = response.json()
+        
+        # Log the full response from Telegram
+        print(f"Telegram API response for chat_id {chat_id}: {response_json}")
+
+        # Check if Telegram reported an error
+        if not response_json.get("ok"):
+            print(f"TELEGRAM API ERROR: {response_json.get('description')}")
+
+    except requests.exceptions.RequestException as e:
+        # Handle network errors, timeouts, etc.
+        print(f"NETWORK ERROR sending to Telegram: {e}")
 
 # --- Function for reading data ---
 def get_sheet_as_dataframe(spreadsheet_id, sheet_name):
