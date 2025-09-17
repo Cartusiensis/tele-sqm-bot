@@ -23,7 +23,8 @@ def get_gspread_client():
 # --- Reusable function to send a message ---
 def send_telegram_message(chat_id, text, reply_to_message_id=None):
     """
-    Sends a message to Telegram and logs the response for debugging.
+    Sends a message to Telegram, automatically splitting it into chunks
+    if it exceeds the 4096 character limit.
     """
     BOT_TOKEN = os.environ.get("BOT_TOKEN")
     if not BOT_TOKEN:
@@ -31,7 +32,40 @@ def send_telegram_message(chat_id, text, reply_to_message_id=None):
         return
 
     TELEGRAM_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    
+    MAX_LENGTH = 4096
+
+    # --- NEW: Chunking Logic ---
+    if len(text) <= MAX_LENGTH:
+        # If the message is short enough, send it in one go.
+        _send_single_telegram_message(TELEGRAM_URL, chat_id, text, reply_to_message_id)
+    else:
+        # If the message is too long, split it into chunks.
+        print(f"Message is too long ({len(text)} chars). Splitting into chunks.")
+        
+        # Split the message by newline characters to keep lines intact.
+        lines = text.split('\n')
+        current_chunk = ""
+        
+        for line in lines:
+            # Check if adding the next line would exceed the limit.
+            # The +1 is for the newline character we'll add back.
+            if len(current_chunk) + len(line) + 1 > MAX_LENGTH:
+                # If it would, send the chunk we have so far.
+                _send_single_telegram_message(TELEGRAM_URL, chat_id, current_chunk)
+                # And start a new chunk with the current line.
+                current_chunk = line
+            else:
+                # Otherwise, add the line to the current chunk.
+                if current_chunk: # Add a newline if it's not the first line
+                    current_chunk += "\n"
+                current_chunk += line
+        
+        # After the loop, send any remaining part of the message.
+        if current_chunk:
+            _send_single_telegram_message(TELEGRAM_URL, chat_id, current_chunk)
+
+def _send_single_telegram_message(url, chat_id, text, reply_to_message_id=None):
+    """Internal helper function to send one message and log the response."""
     payload = {
         "chat_id": str(chat_id),
         "text": text,
@@ -42,21 +76,12 @@ def send_telegram_message(chat_id, text, reply_to_message_id=None):
         payload['reply_to_message_id'] = reply_to_message_id
     
     try:
-        # Send the request and store the response
-        response = requests.post(TELEGRAM_URL, json=payload, timeout=10) # Added a timeout
-        
-        # Convert the response to JSON to inspect it
+        response = requests.post(url, json=payload, timeout=10)
         response_json = response.json()
-        
-        # Log the full response from Telegram
         print(f"Telegram API response for chat_id {chat_id}: {response_json}")
-
-        # Check if Telegram reported an error
         if not response_json.get("ok"):
             print(f"TELEGRAM API ERROR: {response_json.get('description')}")
-
     except requests.exceptions.RequestException as e:
-        # Handle network errors, timeouts, etc.
         print(f"NETWORK ERROR sending to Telegram: {e}")
 
 # --- Function for reading data ---
