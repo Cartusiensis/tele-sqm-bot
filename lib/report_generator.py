@@ -145,7 +145,7 @@ def generate_report_text(group_name, sektor_values_to_filter):
         body = ""
 
         if df_sorted.empty:
-            body = "Tidak ada tiket yang memenuhi kriteria."
+            body = "Tidak ada tiket SQM baru."
         else:
             rows = []
             for _, row in df_sorted.iterrows():
