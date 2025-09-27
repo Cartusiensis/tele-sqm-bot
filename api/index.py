@@ -17,28 +17,36 @@ def format_incident_details(incident_data, ticket_type):
     Formats incident details into a single, pipe-separated line
     by directly mapping a list of column keys to their values.
     """
-    def get_clean_value(key):
-        return str(incident_data.get(key, '')).strip().replace('\n', ' ')
-
-    incident_id = get_clean_value('incident')
-    header = f"📄 Respon {incident_id}:\n"
+    # Get the incident ID for the header separately
+    raw_incident_id = str(incident_data.get('incident', '')).strip()
+    header_id = raw_incident_id or 'N/A' # Use N/A if incident ID itself is missing
+    header = f"📄 Respon {header_id}:\n"
     
-    if ticket_type == 'SQM(CCAN)':
-        column_keys = [
-            'incident', 'kategori loker', 'status', 'summary', 'customer name',
-            'no hp', 'user', 'sto', 'segment', 'datek', 'interface',
-            'ip', 'hasil ukur', 'sn'
-        ]
-    else: # Default to SQM
-        column_keys = [
-            'incident', 'kategori loker', 'status', 'summary', 'customer name',
-            'no hp', 'user', 'sto', 'customer type', 'status sugar', 'datek',
-            'interface', 'ip', 'hasil ukur', 
-            'sn',
-            'proses ttr 4 jam'
-        ]
+    # --- Define the report structure using dictionaries ---
+    column_map_sqm = {
+        'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
+        'status': 'STATUS', 'summary': 'SUMMARY', 'customer name': 'CUSTOMER NAME',
+        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
+        'customer type': 'CUSTOMER TYPE', 'status sugar': 'STATUS SUGAR',
+        'datek': 'DATEK', 'interface': 'INTERFACE', 'ip': 'IP',
+        'hasil ukur': 'HASIL UKUR', 'sn': 'SN', 'proses ttr 4 jam': 'TTR 4 JAM'
+    }
+    column_map_ccan = {
+        'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
+        'status': 'STATUS', 'summary': 'SUMMARY', 'customer name': 'CUSTOMER NAME',
+        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
+        'segment': 'SEGMENT', 'datek': 'DATEK',
+        'interface': 'INTERFACE', 'ip': 'IP', 'hasil ukur': 'HASIL UKUR', 'sn': 'SN'
+    }
 
-    report_parts = [get_clean_value(key) for key in column_keys]
+    active_map = column_map_ccan if ticket_type == 'SQM(CCAN)' else column_map_sqm
+
+    report_parts = []
+    for key, placeholder_name in active_map.items():
+        
+        value = str(incident_data.get(key, '')).strip().replace('\n', ' ')
+        
+        report_parts.append(value or placeholder_name)
 
     body = " | ".join(report_parts)
     return header + body
