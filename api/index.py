@@ -4,58 +4,52 @@ import re
 from http.server import BaseHTTPRequestHandler
 import pandas as pd
 
-# Imports from lib/report_generator are correct and unchanged
 from lib.report_generator import (
     generate_sqm_regional_report,
     generate_ccan_report,
     get_sheet_as_dataframe,
     send_telegram_message,
-    find_summary_in_insera,
     SEKTOR_GROUPS
 )
 
 def format_incident_details(incident_data, ticket_type):
     """
-    Formats incident details differently based on the ticket type ('SQM' or 'SQM(CCAN)').
+    Formats incident details into a single, pipe-separated line
+    by directly mapping a list of column keys to their values.
     """
-    def esc(s):
-        return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-
-    field_map_sqm = {
-        '• Contact Name': 'contact name', '• No HP': 'no hp', '• User': 'user',
-        '• Customer Type': 'customer type', '• DATEK': 'datek', '• STO': 'sto',
-        '• Status Sugar': 'status sugar', '• Hasil Ukur': 'hasil ukur',
-        '• Proses TTR 4 Jam': 'proses ttr 4 jam', '• SN': 'sn',
-        '• Summary': 'summary'
-    }
-
-    field_map_ccan = {
-        '• Contact Name': 'contact name', '• No HP': 'no hp', '• User': 'user',
-        '• Customer Segment': 'customer segment',
-        '• DATEK': 'datek', '• STO': 'sto',
-        '• Hasil Ukur': 'hasil ukur',
-        '• SN': 'sn',
-        '• Summary': 'summary'
-    }
-
-    # Determine which template to use
-    if ticket_type == 'SQM(CCAN)':
-        field_map = field_map_ccan
-        title_type = "SQM(CCAN)"
-    else:
-        # Default to SQM for safety, covering 'SQM' and any other unknown types
-        field_map = field_map_sqm
-        title_type = "SQM"
-
-    lines = [f"📄 Detail Ticket {title_type}: <code>{esc(incident_data.get('incident', 'N/A'))}</code>"]
+    # Get the incident ID for the header separately
+    raw_incident_id = str(incident_data.get('incident', '')).strip()
+    header_id = raw_incident_id or 'N/A' # Use N/A if incident ID itself is missing
+    header = f"📄 Respon {header_id}:\n"
     
-    # Loop through the chosen template and build the response
-    for label, col_name in field_map.items():
-        value = incident_data.get(col_name)
-        if pd.notna(value) and str(value) != '':
-            lines.append(f"{label}: {esc(value)}")
-            
-    return "\n".join(lines)
+    # --- Define the report structure using dictionaries ---
+    column_map_sqm = {
+        'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
+        'status': 'STATUS', 'summary': 'SUMMARY', 'customer name': 'CUSTOMER NAME',
+        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
+        'customer type': 'CUSTOMER TYPE', 'status sugar': 'STATUS SUGAR',
+        'datek': 'DATEK', 'interface': 'INTERFACE', 'ip': 'IP',
+        'hasil ukur': 'HASIL UKUR', 'sn': 'SN', 'proses ttr 4 jam': 'TTR 4 JAM'
+    }
+    column_map_ccan = {
+        'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
+        'status': 'STATUS', 'summary': 'SUMMARY', 'customer name': 'CUSTOMER NAME',
+        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
+        'segment': 'SEGMENT', 'datek': 'DATEK',
+        'interface': 'INTERFACE', 'ip': 'IP', 'hasil ukur': 'HASIL UKUR', 'sn': 'SN'
+    }
+
+    active_map = column_map_ccan if ticket_type == 'SQM(CCAN)' else column_map_sqm
+
+    report_parts = []
+    for key, placeholder_name in active_map.items():
+        
+        value = str(incident_data.get(key, '')).strip().replace('\n', ' ')
+        
+        report_parts.append(value or placeholder_name)
+
+    body = " | ".join(report_parts)
+    return header + body
 
 
 class handler(BaseHTTPRequestHandler):
@@ -99,40 +93,18 @@ class handler(BaseHTTPRequestHandler):
                         send_telegram_message(chat_id, "Sorry, that is not a valid report command.", reply_to_message_id=message_id)
                 self.send_response(200); self.end_headers(); self.wfile.write(b'{"status":"ok"}'); return
 
-
-            # --- MODIFIED: Intelligent Incident Lookup Logic ---
             incident_ids = re.findall(r'\binc\d+\b', text, re.IGNORECASE)
             if incident_ids:
                 print(f"Found incident IDs: {incident_ids}")
                 unique_ids = sorted(list(set(id.upper() for id in incident_ids)))
-                
                 SPREADSHEET_ID = os.environ.get("SPREADSHEET_ID")
-                
-                # Step 1: Fetch data ONCE from both sheets for efficiency
                 df_all_tickets = get_sheet_as_dataframe(SPREADSHEET_ID, "ALLTIKET")
                 df_all_tickets['incident'] = df_all_tickets['incident'].str.upper()
-
-                df_insera = get_sheet_as_dataframe(SPREADSHEET_ID, "INSERA")
-                df_insera['incident'] = df_insera['incident'].str.upper()
-                # Keep only the columns we need for enrichment
-                df_insera_enrichment = df_insera[['incident', 'summary', 'customer segment']]
-
                 replies = []
                 for incident_id in unique_ids:
-                    result_all = df_all_tickets[df_all_tickets['incident'] == incident_id]
-                    
-                    if not result_all.empty:
-                        # Convert the main ticket data to a dictionary
-                        incident_data = result_all.iloc[0].to_dict()
-                        
-                        # Step 2: Enrich with data from INSERA sheet
-                        result_insera = df_insera_enrichment[df_insera_enrichment['incident'] == incident_id]
-                        if not result_insera.empty:
-                            insera_data = result_insera.iloc[0].to_dict()
-                            # Add the enrichment data to our main dictionary
-                            incident_data.update(insera_data)
-
-                        # Step 3: Determine ticket type and call the intelligent formatter
+                    result = df_all_tickets[df_all_tickets['incident'] == incident_id]
+                    if not result.empty:
+                        incident_data = result.iloc[0].to_dict()
                         ticket_type = incident_data.get('kategori loker', '').strip().upper()
                         formatted_reply = format_incident_details(incident_data, ticket_type)
                         replies.append(formatted_reply)
