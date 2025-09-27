@@ -7,7 +7,7 @@ import pandas as pd
 # Imports from lib/report_generator are correct and unchanged
 from lib.report_generator import (
     generate_sqm_regional_report,
-    generate_ccan_global_report,
+    generate_ccan_report,
     get_sheet_as_dataframe,
     send_telegram_message,
     find_summary_in_insera,
@@ -83,7 +83,7 @@ class handler(BaseHTTPRequestHandler):
                 if cleaned_command == '/sqmccan':
                     print("MATCHED COMMAND: /sqmccan")
                     send_telegram_message(chat_id, "Generating global SQM(CCAN) report...")
-                    success, report_text = generate_ccan_global_report()
+                    success, report_text = generate_ccan_report()
                     send_telegram_message(chat_id, report_text)
                 else:
                     found_group = False
