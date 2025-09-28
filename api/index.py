@@ -76,7 +76,7 @@ class handler(BaseHTTPRequestHandler):
             if cleaned_command.startswith('/sqm'):
                 if cleaned_command == '/sqmccan':
                     print("MATCHED COMMAND: /sqmccan")
-                    send_telegram_message(chat_id, "Generating global SQM(CCAN) report...")
+                    send_telegram_message(chat_id, "Generating SQM(CCAN) report...")
                     success, report_text = generate_ccan_report()
                     send_telegram_message(chat_id, report_text)
                 else:
