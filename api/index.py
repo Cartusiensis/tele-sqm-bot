@@ -26,9 +26,8 @@ def format_incident_details(incident_data, ticket_type):
     column_map_sqm = {
         'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
         'status': 'STATUS', 'summary': 'SUMMARY', 'contact name': 'CONTACT NAME',
-        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
         'customer type': 'CUSTOMER TYPE', 'status sugar': 'STATUS SUGAR',
-        'datek': 'DATEK', 'interface': 'INTERFACE', 'ip': 'IP',
+        'datek': 'DATEK', 'interface': 'INTERFACE',
         'hasil ukur': 'HASIL UKUR', 'sn': 'SN', 'proses ttr 4 jam': 'TTR 4 JAM'
     }
     column_map_ccan = {
@@ -36,7 +35,7 @@ def format_incident_details(incident_data, ticket_type):
         'status': 'STATUS', 'summary': 'SUMMARY', 'contact name': 'CONTACT NAME',
         'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
         'segment': 'SEGMENT', 'datek': 'DATEK',
-        'interface': 'INTERFACE', 'ip': 'IP', 'hasil ukur': 'HASIL UKUR', 'sn': 'SN'
+        'interface': 'INTERFACE', 'hasil ukur': 'HASIL UKUR', 'sn': 'SN'
     }
 
     active_map = column_map_ccan if ticket_type == 'SQM(CCAN)' else column_map_sqm
