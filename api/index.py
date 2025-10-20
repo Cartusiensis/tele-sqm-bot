@@ -33,8 +33,7 @@ def format_incident_details(incident_data, ticket_type):
     column_map_ccan = {
         'incident': 'INCIDENT', 'kategori loker': 'KATEGORI LOKER',
         'status': 'STATUS', 'summary': 'SUMMARY', 'contact name': 'CONTACT NAME',
-        'no hp': 'NO HP', 'user': 'USER', 'sto': 'STO',
-        'segment': 'SEGMENT', 'datek': 'DATEK',
+        'sto': 'STO', 'segment': 'SEGMENT', 'datek': 'DATEK',
         'hasil ukur': 'HASIL UKUR', 'sn': 'SN'
     }
 
